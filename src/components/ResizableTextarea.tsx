@@ -35,7 +35,7 @@ const ResizableTextarea: React.FC<ResizableTextareaProps> = ({
       );
       textareaRef.current.style.height = `${newHeight}px`;
     }
-  }, [value, initialHeight]);
+  }, [value, initialHeight, maxHeight]);
 
   return (
     <textarea

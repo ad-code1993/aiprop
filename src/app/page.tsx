@@ -11,7 +11,7 @@ export default function Home() {
         </h1>
         {/* Subheading */}
         <p className="text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto">
-          Answer a few smart questions — we'll generate a complete proposal.
+          Answer a few smart questions — we&apos;ll generate a complete proposal.
         </p>
         {/* CTA Button */}
         <div className="pt-6">

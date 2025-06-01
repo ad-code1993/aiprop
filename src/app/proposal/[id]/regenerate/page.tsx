@@ -37,7 +37,10 @@ export default function RegenerateProposalPage({
   params: Promise<{ id: string }> | { id: string };
 }) {
   // Unwrap params if it's a Promise (Next.js 14+)
-  const resolvedParams: { id: string } = typeof (params as any).then === "function" ? use(params as Promise<{ id: string }>) : (params as { id: string });
+  const resolvedParams: { id: string } =
+    typeof (params as Promise<{ id: string }>).then === "function"
+      ? use(params as Promise<{ id: string }>)
+      : (params as { id: string });
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +81,7 @@ export default function RegenerateProposalPage({
         title: "Success",
         description: "Proposal regenerated successfully",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to regenerate proposal",
@@ -103,7 +106,7 @@ export default function RegenerateProposalPage({
         title: "Loaded",
         description: "Latest proposal loaded successfully",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Could not load latest proposal",
@@ -209,13 +212,13 @@ export default function RegenerateProposalPage({
           <div className="mt-4 flex gap-2">
             <Button
               variant="outline"
-              onClick={() =>
-                navigator.clipboard.writeText(regeneratedProposal)
-              }
+              onClick={() => navigator.clipboard.writeText(regeneratedProposal)}
             >
               Copy to Clipboard
             </Button>
-            <Button onClick={() => router.push(`/proposal/${resolvedParams.id}/edit`)}>
+            <Button
+              onClick={() => router.push(`/proposal/${resolvedParams.id}/edit`)}
+            >
               Edit Proposal
             </Button>
           </div>

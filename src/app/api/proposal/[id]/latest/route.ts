@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 
-export async function GET(request: Request, context: { params: { id: string } }) {
-  const { id } = context.params;
+export async function GET(request: Request, context: Promise<{ params: { id: string } }>) {
+  const { params } = await context;
+  const { id } = params;
   try {
     const response = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/proposal/${id}/latest`,
@@ -13,8 +14,14 @@ export async function GET(request: Request, context: { params: { id: string } })
       }
     );
     return NextResponse.json(response.data);
-  } catch (error: any) {
-    if (error.response && error.response.status === 404) {
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      (error as AxiosError).response &&
+      (error as AxiosError).response!.status === 404
+    ) {
       return new NextResponse("No generated proposal found for this session", { status: 404 });
     }
     console.error("[PROPOSAL_LATEST]", error);
@@ -22,8 +29,9 @@ export async function GET(request: Request, context: { params: { id: string } })
   }
 }
 
-export async function POST(request: Request, context: { params: { id: string } }) {
-  const { id } = context.params;
+export async function POST(request: Request, context: Promise<{ params: { id: string } }>) {
+  const { params } = await context;
+  const { id } = params;
   try {
     const json = await request.json();
     const response = await axios.post(
@@ -36,8 +44,8 @@ export async function POST(request: Request, context: { params: { id: string } }
       }
     );
     return NextResponse.json(response.data);
-  } catch (error: any) {
-    if (error.response) {
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
       return new NextResponse("Failed to generate proposal", { status: 500 });
     }
     console.error("[PROPOSAL_GENERATE]", error);

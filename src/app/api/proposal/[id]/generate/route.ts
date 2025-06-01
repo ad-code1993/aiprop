@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import axios from "axios"; // Add axios import
+import axios from "axios";
 
-export async function POST(request: Request, context: { params: { id: string } }) {
-  const { id } = context.params;
+export async function POST(request: Request, context: Promise<{ params: { id: string } }>) {
+  const { params } = await context;
+  const { id } = params;
   const body = await request.json();
   try {
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/proposal/${id}/generate`;

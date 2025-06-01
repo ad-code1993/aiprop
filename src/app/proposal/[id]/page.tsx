@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { notFound } from "next/navigation";
 import {
   Card,
   CardHeader,
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { z } from "zod";
 import Link from "next/link";
 import { Icons } from "@/components/icons";
 
@@ -32,26 +30,11 @@ interface Proposal {
   project_goals?: string | null;
 }
 
-// Use environment variable for API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-// Zod schema for runtime validation
-const ProposalSchema = z.object({
-  client_name: z.string().nullable().optional(),
-  project_title: z.string().nullable().optional(),
-  problem_statement: z.string().nullable().optional(),
-  proposed_solution: z.string().nullable().optional(),
-  previous_experience: z.string().nullable().optional(),
-  objectives: z.string().nullable().optional(),
-  implementation_plan: z.string().nullable().optional(),
-  benefits: z.string().nullable().optional(),
-  timeline: z.string().nullable().optional(),
-  budget: z.string().nullable().optional(),
-  deliverables: z.string().nullable().optional(),
-  technologies: z.string().nullable().optional(),
-});
-
-export default function ProposalPreviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ProposalPreviewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = React.use(params);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +45,8 @@ export default function ProposalPreviewPage({ params }: { params: Promise<{ id: 
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
         const res = await fetch(`${apiUrl}/proposal/${id}`, {
           headers: { accept: "application/json" },
           cache: "no-store",
@@ -76,8 +60,8 @@ export default function ProposalPreviewPage({ params }: { params: Promise<{ id: 
         }
         const data = await res.json();
         setProposal(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch proposal");
+      } catch (err: unknown) {
+        setError((err as Error).message || "Failed to fetch proposal");
         setProposal(null);
       } finally {
         setLoading(false);
@@ -93,8 +77,8 @@ export default function ProposalPreviewPage({ params }: { params: Promise<{ id: 
       <div className="min-h-[50vh] flex flex-col items-center justify-center text-center">
         <h1 className="text-4xl font-bold mb-4">Proposal Not Found</h1>
         <p className="text-xl text-gray-600 mb-8 max-w-lg">
-          The proposal you're looking for doesn't exist or may have been
-          deleted.
+          The proposal you&apos;re looking for doesn&apos;t exist or may have
+          been deleted.
         </p>
       </div>
     );
@@ -186,8 +170,8 @@ function LatestProposalLoader({ sessionId }: { sessionId: string }) {
         throw new Error("No generated proposal found for this session");
       const data = await res.json();
       setLatest(data.proposal);
-    } catch (e: any) {
-      setError(e.message || "Failed to load latest proposal");
+    } catch (e: unknown) {
+      setError((e as Error).message || "Failed to load latest proposal");
       setLatest(null);
     } finally {
       setLoading(false);

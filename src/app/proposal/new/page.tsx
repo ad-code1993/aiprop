@@ -219,17 +219,9 @@ export default function InteractiveProposalPage() {
           },
         ]);
       }
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === aiMessageId
-            ? {
-                ...msg,
-                text: "Failed to get response. Please try again.",
-              }
-            : msg
-        )
-      );
+    } catch {
+      // Handle error or log it if needed
+      // Optionally, you can remove this catch block if not used
     } finally {
       setLoading(false);
     }

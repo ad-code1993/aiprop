@@ -148,7 +148,7 @@ export default function ProposalRegenerator({
                 id="custom-prompt"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="E.g., 'Make the proposal more technical', 'Focus on cybersecurity aspects', 'Add a budget section', etc."
+                placeholder="E.g., &lsquo;Make the proposal more technical&rsquo;, &lsquo;Focus on cybersecurity aspects&rsquo;, &lsquo;Add a budget section&rsquo;, etc."
                 className="min-h-[100px]"
               />
             </div>
@@ -170,7 +170,7 @@ export default function ProposalRegenerator({
       </CardContent>
       <CardFooter className="bg-muted/50 py-3">
         <p className="text-xs text-muted-foreground">
-          Note: Regenerated proposals are saved with the session but don't
+          Note: Regenerated proposals are saved with the session but don&apos;t
           overwrite original fields
         </p>
       </CardFooter>
