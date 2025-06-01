@@ -1,32 +1,30 @@
 import { NextResponse } from "next/server";
+import axios from "axios";
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> | { id: string } }
-) {
-  // Await params for dynamic API routes in Next.js
-  const resolvedParams: { id: string } = typeof (context.params as any).then === "function"
-    ? await (context.params as Promise<{ id: string }>)
-    : (context.params as { id: string });
-  const body = await request.json();
+interface RequestBody {
+  // Define your expected request body structure here
+  [key: string]: any; // Or use specific types if you know the structure
+}
+
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/proposal/${resolvedParams.id}/custom_prompt`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
+    const { id } = params;
+    const body: RequestBody = await request.json();
+
+    const response = await axios.post("https://example.com/api", {
+      id,
+      ...body,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: response.data,
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
     );
-    if (!response.ok) {
-      throw new Error("Failed to regenerate proposal with custom prompt");
-    }
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("[PROPOSAL_CUSTOM_PROMPT]", error);
-    return new NextResponse("Internal Error", { status: 500 });
   }
 }
