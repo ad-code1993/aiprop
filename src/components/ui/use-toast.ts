@@ -1,3 +1,5 @@
+import { toast as sonnerToast } from 'sonner';
+
 interface Toast {
   title?: string;
   description?: string;
@@ -5,13 +7,12 @@ interface Toast {
 }
 
 export function useToast() {
-  // This is a placeholder. Replace with your actual toast logic or library.
   return {
-    toast: ({ title, description }: Toast) => {
-      // You can replace this with your preferred toast library (e.g., sonner, radix, shadcn, etc.)
-      if (typeof window !== "undefined") {
-        window.alert(`${title ? title + ': ' : ''}${description || ''}`);
-      }
+    toast: ({ title, description, variant }: Toast) => {
+      sonnerToast(title || '', {
+        description,
+        className: variant === 'destructive' ? 'bg-red-500 text-white' : '',
+      });
     },
   };
 }

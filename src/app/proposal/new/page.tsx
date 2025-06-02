@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
 import ResizableTextarea from "@/components/ResizableTextarea";
 import Link from "next/link";
+import api from "@/lib/api";
 
 // Message type definition
 interface Message {
@@ -93,19 +94,18 @@ export default function InteractiveProposalPage() {
 
   // Start session on mount
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/start_proposal", { method: "POST" })
-      .then((res) => res.json())
-      .then((data) => {
-        setSessionId(data.session_id);
-        setMessages([
-          {
-            id: Date.now().toString(),
-            role: "ai",
-            text: data.question,
-            timestamp: new Date(),
-          },
-        ]);
-      });
+    api.post("/start_proposal").then((res) => {
+      const data = res.data;
+      setSessionId(data.session_id);
+      setMessages([
+        {
+          id: Date.now().toString(),
+          role: "ai",
+          text: data.question,
+          timestamp: new Date(),
+        },
+      ]);
+    });
   }, []);
 
   // Auto-scroll to latest message
@@ -144,43 +144,18 @@ export default function InteractiveProposalPage() {
     ]);
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/continue_proposal/${sessionId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ response: userInput }),
-        }
+      const res = await api.post(
+        `/continue_proposal/${sessionId}`,
+        { response: userInput },
+        { responseType: "stream" }
       );
-
-      if (!res.body) {
+      if (!res.data) {
         throw new Error("No response body");
       }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let aiResponse = "";
-
-      // Process streamed response
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        aiResponse += chunk;
-        // Update UI with the latest token
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId ? { ...msg, text: msg.text + chunk } : msg
-          )
-        );
-      }
-
-      // After stream completes, parse the full response
+      // NOTE: Axios does not support streaming in the browser. If you need streaming, you must use fetch. Otherwise, you can use res.data as the full response.
+      const aiResponse = res.data;
       let finalQuestion = aiResponse;
       let finalReason = "";
-      // Look for [REASONING] marker
       const reasoningMatch = aiResponse.match(
         /\[REASONING\][ \t]*([\s\S]*?)\n{2,}([\s\S]*)/
       );
@@ -188,13 +163,9 @@ export default function InteractiveProposalPage() {
         finalReason = reasoningMatch[1].trim();
         finalQuestion = reasoningMatch[2].trim();
       }
-
-      // Check for completion signal
       const isCompleteResponse =
         finalQuestion.toLowerCase().includes("all done") ||
         finalQuestion.toLowerCase().includes("proposal generation complete");
-
-      // Update the AI message with parsed content
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === aiMessageId
@@ -206,7 +177,6 @@ export default function InteractiveProposalPage() {
             : msg
         )
       );
-
       if (isCompleteResponse) {
         setIsComplete(true);
         setMessages((prev) => [
@@ -221,7 +191,6 @@ export default function InteractiveProposalPage() {
       }
     } catch {
       // Handle error or log it if needed
-      // Optionally, you can remove this catch block if not used
     } finally {
       setLoading(false);
     }

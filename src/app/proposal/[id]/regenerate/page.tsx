@@ -1,7 +1,8 @@
+// Use the correct typing approach for Next.js App Router pages
 "use client";
 
-import React, { use } from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +17,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Icons } from "@/components/icons";
 import { MarkdownRenderer } from "@/components/ProposalMarkdown";
+import api from "@/lib/api";
 
 const styleOptions = [
   { value: "formal", label: "Formal" },
@@ -31,16 +33,9 @@ const toneOptions = [
   { value: "friendly", label: "Friendly" },
 ];
 
-export default function RegenerateProposalPage({
-  params,
-}: {
-  params: Promise<{ id: string }> | { id: string };
-}) {
-  // Unwrap params if it's a Promise (Next.js 14+)
-  const resolvedParams: { id: string } =
-    typeof (params as Promise<{ id: string }>).then === "function"
-      ? use(params as Promise<{ id: string }>)
-      : (params as { id: string });
+export default function RegenerateProposalPage() {
+  const params = useParams<{ id: string }>();
+  const id = params.id;
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -53,30 +48,19 @@ export default function RegenerateProposalPage({
   const handleRegenerate = async () => {
     setIsLoading(true);
     try {
-      let endpoint = `/api/proposal/${resolvedParams.id}/generate`;
+      let endpoint = "";
       let body = {};
 
       if (activeTab === "preset") {
+        endpoint = `/proposal/${id}/generate`;
         body = { style, tone };
       } else {
-        endpoint = `/api/proposal/${resolvedParams.id}/custom_prompt`;
+        endpoint = `/proposal/${id}/custom_prompt`;
         body = { prompt: customPrompt };
       }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to regenerate proposal");
-      }
-
-      const data = await response.json();
-      setRegeneratedProposal(data.proposal);
+      const response = await api.post(endpoint, body);
+      setRegeneratedProposal(response.data.proposal);
       toast({
         title: "Success",
         description: "Proposal regenerated successfully",
@@ -96,12 +80,8 @@ export default function RegenerateProposalPage({
   const handleLoadLatest = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/proposal/${resolvedParams.id}/latest`);
-      if (!response.ok) {
-        throw new Error("No generated proposal found for this session");
-      }
-      const data = await response.json();
-      setRegeneratedProposal(data.proposal);
+      const response = await api.get(`/proposal/${id}/latest`);
+      setRegeneratedProposal(response.data.proposal);
       toast({
         title: "Loaded",
         description: "Latest proposal loaded successfully",
@@ -216,9 +196,7 @@ export default function RegenerateProposalPage({
             >
               Copy to Clipboard
             </Button>
-            <Button
-              onClick={() => router.push(`/proposal/${resolvedParams.id}/edit`)}
-            >
+            <Button onClick={() => router.push(`/proposal/${id}/edit`)}>
               Edit Proposal
             </Button>
           </div>

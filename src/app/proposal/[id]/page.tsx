@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Icons } from "@/components/icons";
+import api from "@/lib/api";
 
 interface Proposal {
   client_name: string;
@@ -41,33 +42,20 @@ export default function ProposalPreviewPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchProposal() {
-      setLoading(true);
-      setError(null);
-      try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-        const res = await fetch(`${apiUrl}/proposal/${id}`, {
-          headers: { accept: "application/json" },
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          if (res.status === 404) {
-            setProposal(null);
-            return;
-          }
-          throw new Error(`Failed to fetch proposal: ${res.statusText}`);
-        }
-        const data = await res.json();
-        setProposal(data);
-      } catch (err: unknown) {
-        setError((err as Error).message || "Failed to fetch proposal");
+    setLoading(true);
+    setError(null);
+    api
+      .get(`/proposal/${id}`)
+      .then((res) => {
+        setProposal(res.data);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to fetch proposal");
         setProposal(null);
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    }
-    fetchProposal();
+      });
   }, [id]);
 
   if (loading) return <ProposalPreviewLoading />;
@@ -162,10 +150,12 @@ function LatestProposalLoader({ sessionId }: { sessionId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${apiUrl}/proposal/${sessionId}/latest`, {
-        headers: { accept: "application/json" },
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/proposal/${sessionId}/latest`,
+        {
+          headers: { accept: "application/json" },
+        }
+      );
       if (!res.ok)
         throw new Error("No generated proposal found for this session");
       const data = await res.json();
