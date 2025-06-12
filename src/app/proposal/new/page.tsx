@@ -15,7 +15,8 @@ interface Message {
   role: "user" | "ai" | "system";
   text: string;
   timestamp: Date;
-  reasoning?: string; // Add reasoning field
+  reasoning?: string;
+  recommendation?: string; // <-- Add this line
 }
 
 function MessageItem({ message }: { message: Message }) {
@@ -61,6 +62,17 @@ function MessageItem({ message }: { message: Message }) {
               <p className="text-xs font-semibold mb-1">Reasoning:</p>
               <div className="text-xs">
                 <ReactMarkdown>{message.reasoning}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+          {/* Display recommendation if available */}
+          {message.recommendation && (
+            <div className="mt-2 p-2 bg-blue-50 rounded-md">
+              <p className="text-xs font-semibold mb-1 text-blue-700">
+                Recommendation:
+              </p>
+              <div className="text-xs text-blue-900">
+                <ReactMarkdown>{message.recommendation}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -144,25 +156,46 @@ export default function InteractiveProposalPage() {
     ]);
 
     try {
+      // Debug: log request before sending
+      console.log("Sending to backend:", {
+        url: `/continue_proposal/${sessionId}`,
+        body: { response: userInput },
+      });
       const res = await api.post(
         `/continue_proposal/${sessionId}`,
         { response: userInput },
-        { responseType: "stream" }
+        {
+          responseType: "text",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
       );
+      // Debug: log response after receiving
+      console.log("Backend response:", res);
       if (!res.data) {
         throw new Error("No response body");
       }
       // NOTE: Axios does not support streaming in the browser. If you need streaming, you must use fetch. Otherwise, you can use res.data as the full response.
+      // The backend returns a plain text response in the format:
+      // [REASONING]\n<reasoning text>\n\n<next question>
+      // Parse reasoning and question from the response
       const aiResponse = res.data;
       let finalQuestion = aiResponse;
       let finalReason = "";
-      const reasoningMatch = aiResponse.match(
-        /\[REASONING\][ \t]*([\s\S]*?)\n{2,}([\s\S]*)/
+      let finalRecommendation = "";
+
+      // Regex to extract reasoning, recommendation, and question
+      const match = aiResponse.match(
+        /\[REASONING\][ \t]*([\s\S]*?)(?:\n{2,}\[RECOMMENDATION\][ \t]*([\s\S]*?))?\n{2,}([\s\S]*)/
       );
-      if (reasoningMatch) {
-        finalReason = reasoningMatch[1].trim();
-        finalQuestion = reasoningMatch[2].trim();
+      if (match) {
+        finalReason = match[1]?.trim() || "";
+        finalRecommendation = match[2]?.trim() || "";
+        finalQuestion = match[3]?.trim() || "";
       }
+
       const isCompleteResponse =
         finalQuestion.toLowerCase().includes("all done") ||
         finalQuestion.toLowerCase().includes("proposal generation complete");
@@ -173,6 +206,7 @@ export default function InteractiveProposalPage() {
                 ...msg,
                 text: finalQuestion,
                 reasoning: finalReason,
+                recommendation: finalRecommendation, // <-- Add this
               }
             : msg
         )
@@ -189,8 +223,24 @@ export default function InteractiveProposalPage() {
           },
         ]);
       }
-    } catch {
-      // Handle error or log it if needed
+    } catch (err: any) {
+      // Show backend error message in chat if available
+      let errorMsg = "An error occurred. Please try again.";
+      if (err?.response?.data?.detail) {
+        errorMsg = `Backend error: ${err.response.data.detail}`;
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId
+            ? {
+                ...msg,
+                text: errorMsg,
+              }
+            : msg
+        )
+      );
     } finally {
       setLoading(false);
     }

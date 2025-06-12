@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
@@ -9,6 +9,96 @@ import { cn } from "@/lib/utils";
 import matter from "gray-matter";
 import { Components } from "react-markdown";
 import "katex/dist/katex.min.css";
+import mermaid from "mermaid";
+
+function Mermaid({ code }: { code: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (!ref.current) return;
+      try {
+        // Clear previous content
+        ref.current.innerHTML = "";
+        setError(null);
+
+        // Initialize Mermaid if needed
+        if (typeof mermaid === "undefined") {
+          setError("Mermaid library not loaded");
+          return;
+        }
+
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "base",
+          themeVariables: {
+            background: "#fff",
+            primaryColor: "#2563eb",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "14px",
+          },
+        });
+
+        // Parse and render
+        const { svg } = await mermaid.render(`mermaid-${Date.now()}`, code);
+        ref.current.innerHTML = svg;
+      } catch (err) {
+        setError("Failed to render diagram");
+        ref.current.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded text-red-600">
+            Diagram Error: ${err instanceof Error ? err.message : String(err)}
+          </div>
+        `;
+      }
+    };
+    renderDiagram();
+  }, [code]);
+
+  return (
+    <div className="my-6 overflow-x-auto bg-white p-4 rounded-lg border shadow-sm">
+      {error && <div className="text-red-500 mb-2">{error}</div>}
+      <div ref={ref} className="mermaid" style={{ minHeight: "200px" }} />
+    </div>
+  );
+}
+
+// NEW: Simple graph parser for AI-generated syntax
+function parseGraphDSL(dsl: string): string {
+  const lines = dsl.split("\n");
+  let mermaidCode = "graph LR\n";
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    // Support different connection types
+    if (trimmed.includes("->")) {
+      const [source, target] = trimmed.split("->").map((s) => s.trim());
+      if (source && target) {
+        mermaidCode += `    ${source} --> ${target}\n`;
+      }
+    } else if (trimmed.includes("--")) {
+      const [source, target] = trimmed.split("--").map((s) => s.trim());
+      if (source && target) {
+        mermaidCode += `    ${source} --- ${target}\n`;
+      }
+    }
+    // Support node definitions
+    else if (trimmed.includes("=")) {
+      const [nodeId, label] = trimmed.split("=").map((s) => s.trim());
+      if (nodeId && label) {
+        mermaidCode += `    ${nodeId}["${label}"]\n`;
+      }
+    }
+    // Support raw mermaid fallback
+    else {
+      mermaidCode += `    ${trimmed}\n`;
+    }
+  });
+
+  return mermaidCode;
+}
 
 export function MarkdownRenderer({
   content,
@@ -24,18 +114,30 @@ export function MarkdownRenderer({
   const processedContent = preprocessMarkdownTables(markdownContent);
 
   const components: Components = {
-    code({ className, children }) {
-      const match = /language-(\w+)/.exec(className || "");
-      return match ? (
-        <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
-          <code className={className}>
-            {String(children).replace(/\n$/, "")}
-          </code>
-        </pre>
+    code: ((props: any) => {
+      const { className, children, inline } = props;
+      const codeString = String(children).trim();
+      const lang = className?.replace("language-", "");
+
+      // NEW: Handle graph code blocks
+      if (!inline && lang === "graph") {
+        const mermaidCode = parseGraphDSL(codeString);
+        return <Mermaid code={mermaidCode} />;
+      }
+
+      // Only render Mermaid for block code, not inline code
+      if (!inline && lang === "mermaid") {
+        return <Mermaid code={codeString} />;
+      }
+
+      return inline ? (
+        <code className={className}>{codeString}</code>
       ) : (
-        <code className={className}>{children}</code>
+        <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
+          <code className={className}>{codeString}</code>
+        </pre>
       );
-    },
+    }) as any,
     // Enhanced table styling
     table({ children }) {
       return (
@@ -126,20 +228,6 @@ export function MarkdownRenderer({
     <div
       className={cn(
         "prose max-w-full mx-auto p-4 dark:prose-invert",
-        "prose-headings:font-semibold",
-        "prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl",
-        "prose-p:text-base prose-p:leading-relaxed",
-        "prose-a:text-primary hover:prose-a:text-primary/80",
-        "prose-img:rounded-lg",
-        "prose-pre:bg-muted prose-pre:p-0",
-        "prose-blockquote:border-l-4 prose-blockquote:border-primary/50 prose-blockquote:pl-4 prose-blockquote:italic",
-        "prose-ul:list-disc prose-ol:list-decimal",
-        "prose-li:my-1",
-        "prose-table:border-collapse prose-table:w-full",
-        "prose-th:border prose-th:border-border prose-th:p-2",
-        "prose-td:border prose-td:border-border prose-td:p-2",
-        "prose-strong:font-semibold",
-        "prose-em:italic",
         className
       )}
     >
